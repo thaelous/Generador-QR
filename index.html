@@ -1,18 +1,699 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Editor y Generador de Cupones con QR</title>
-    <meta name="description" content="Editor y generador visual de cuponeras con código QR y elementos interactivos arrastrables y redimensionables para impresión en hojas tamaño carta." />
-    <meta property="og:title" content="Editor y Generador de Cupones con QR" />
-    <meta property="og:description" content="Editor y generador visual de cuponeras con código QR y elementos interactivos arrastrables y redimensionables para impresión en hojas tamaño carta." />
-    <meta property="og:type" content="website" />
-    <meta name="twitter:card" content="summary_large_image" />
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
-</html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Editor y Generador de Cupones con QR</title>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --bg: #f8fafc;
+      --border-line: #94a3b8;
+    }
 
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: #0f172a;
+      padding: 20px;
+    }
+
+    .controls {
+      max-width: 960px;
+      margin: 0 auto 24px auto;
+      background: #ffffff;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+      border: 1px solid #e2e8f0;
+    }
+
+    .controls h1 {
+      font-size: 1.4rem;
+      margin-bottom: 6px;
+      color: #0f172a;
+    }
+
+    .controls p {
+      font-size: 0.9rem;
+      color: #64748b;
+      margin-bottom: 20px;
+    }
+
+    .section-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin: 18px 0 10px 0;
+      padding-bottom: 4px;
+      border-bottom: 2px solid #f1f5f9;
+      color: #334155;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+      margin-bottom: 12px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-group.full {
+      grid-column: 1 / -1;
+    }
+
+    label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #475569;
+    }
+
+    input, textarea {
+      padding: 8px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      outline: none;
+      background: #fff;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    input:focus, textarea:focus {
+      border-color: var(--primary);
+    }
+
+    textarea {
+      min-height: 100px;
+      font-family: monospace;
+      font-size: 0.85rem;
+      line-height: 1.4;
+      resize: vertical;
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    button {
+      cursor: pointer;
+      border: none;
+      border-radius: 6px;
+      padding: 10px 20px;
+      font-weight: 700;
+      font-size: 0.9rem;
+      transition: background 0.2s;
+    }
+
+    .btn-generate {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .btn-generate:hover {
+      background: #1d4ed8;
+    }
+
+    .btn-print {
+      background: #0f172a;
+      color: #fff;
+      display: inline-block;
+    }
+
+    .btn-print:hover {
+      background: #334155;
+    }
+
+    /* Galería de miniaturas de imágenes subidas */
+    .images-preview-bar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    .image-thumb {
+      position: relative;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 4px;
+      background: #fff;
+    }
+
+    .image-thumb img {
+      height: 48px;
+      width: 48px;
+      object-fit: contain;
+      display: block;
+    }
+
+    .image-thumb .btn-del {
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      background: #ef4444;
+      color: #fff;
+      border-radius: 50%;
+      width: 18px;
+      height: 18px;
+      font-size: 11px;
+      line-height: 18px;
+      text-align: center;
+      padding: 0;
+      border: none;
+      cursor: pointer;
+    }
+
+    /* Área de Impresión (Hojas Carta: 216mm x 279mm) */
+    .print-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 28px;
+    }
+
+    .sheet {
+      width: 216mm;
+      height: 279mm;
+      background: #ffffff;
+      padding: 12mm 15mm;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      box-sizing: border-box;
+      position: relative;
+    }
+
+    /* Cuponera */
+    .coupon {
+      height: 80mm;
+      width: 100%;
+      border: 2px dashed var(--border-line);
+      border-radius: 8px;
+      position: relative;
+      background: #fff;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+
+    /* Elementos interactivos libres */
+    .draggable-item {
+      position: absolute;
+      user-select: none;
+      cursor: move;
+      border: 1px dashed transparent;
+      padding: 2px;
+      box-sizing: border-box;
+    }
+
+    /* Solo el cupón maestro muestra bordes activos y redimensionadores */
+    .coupon.master-coupon .draggable-item:hover,
+    .coupon.master-coupon .draggable-item.active {
+      border-color: #3b82f6;
+      background: rgba(59, 130, 246, 0.03);
+    }
+
+    .resize-handle {
+      display: none;
+      position: absolute;
+      right: -4px;
+      bottom: -4px;
+      width: 10px;
+      height: 10px;
+      background: #2563eb;
+      border-radius: 2px;
+      cursor: se-resize;
+    }
+
+    .coupon.master-coupon .draggable-item:hover .resize-handle,
+    .coupon.master-coupon .draggable-item.active .resize-handle {
+      display: block;
+    }
+
+    /* Contenidos internos */
+    .draggable-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      pointer-events: none;
+      display: block;
+    }
+
+    .item-text {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      line-height: 1.3;
+      pointer-events: none;
+    }
+
+    .item-tag {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: #dc2626;
+      border: 1px solid #dc2626;
+      padding: 2px 6px;
+      border-radius: 4px;
+      display: inline-block;
+    }
+
+    .item-title {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: #0f172a;
+    }
+
+    .item-desc {
+      font-size: 0.88rem;
+      color: #334155;
+    }
+
+    .item-footer {
+      font-size: 0.72rem;
+      color: #64748b;
+    }
+
+    .item-qr-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      text-align: center;
+      color: #475569;
+      letter-spacing: 0.04em;
+    }
+
+    /* Reglas de impresión */
+    @media print {
+      body {
+        background: transparent !important;
+        padding: 0 !important;
+      }
+
+      .controls {
+        display: none !important;
+      }
+
+      .print-area {
+        gap: 0 !important;
+      }
+
+      .sheet {
+        box-shadow: none !important;
+        margin: 0 !important;
+        page-break-after: always;
+        break-after: page;
+        height: 100vh !important;
+      }
+
+      .draggable-item {
+        border-color: transparent !important;
+        background: transparent !important;
+      }
+
+      .resize-handle {
+        display: none !important;
+      }
+
+      @page {
+        size: letter portrait;
+        margin: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="controls">
+    <h1>Editor y Generador Visual de Cuponeras</h1>
+    <p><strong>Arrastra y redimensiona</strong> cualquier texto, QR o imagen en el primer cupón (cupón maestro). Todas las hojas se ajustarán automáticamente a ese diseño exacto.</p>
+
+    <div class="section-title">1. Textos del Cupón</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label for="couponTag">Etiqueta / Badge</label>
+        <input type="text" id="couponTag" value="CUPÓN EXCLUSIVO" oninput="updateTextValues()">
+      </div>
+      <div class="form-group">
+        <label for="couponTitle">Título del Cupón</label>
+        <input type="text" id="couponTitle" value="¡Descarga nuestra App en Google Play!" oninput="updateTextValues()">
+      </div>
+      <div class="form-group full">
+        <label for="couponDesc">Descripción / Instrucciones</label>
+        <input type="text" id="couponDesc" value="Escanea este código QR con la cámara de tu teléfono móvil para descargar la aplicación inmediatamente." oninput="updateTextValues()">
+      </div>
+      <div class="form-group">
+        <label for="couponFooter">Términos o Pie</label>
+        <input type="text" id="couponFooter" value="Válido en Android. Promoción por tiempo limitado." oninput="updateTextValues()">
+      </div>
+      <div class="form-group">
+        <label for="qrLabelText">Texto bajo el QR</label>
+        <input type="text" id="qrLabelText" value="Escanear aquí" oninput="updateTextValues()">
+      </div>
+    </div>
+
+    <div class="section-title">2. Imágenes del Cupón (puedes subir varias)</div>
+    <div class="form-group full">
+      <input type="file" id="imageUpload" accept="image/*" multiple onchange="handleMultipleImages(event)">
+      <div class="images-preview-bar" id="imagesBar"></div>
+    </div>
+
+    <div class="section-title">3. Enlaces de Google Play</div>
+    <div class="form-group full">
+      <label for="linksInput">Pega tu lista de enlaces (uno por línea)</label>
+      <textarea id="linksInput" placeholder="https://play.google.com/store/apps/details?id=com.ejemplo.app1&#10;https://play.google.com/store/apps/details?id=com.ejemplo.app2&#10;https://play.google.com/store/apps/details?id=com.ejemplo.app3">https://play.google.com/store/apps/details?id=com.ejemplo.app1
+https://play.google.com/store/apps/details?id=com.ejemplo.app2
+https://play.google.com/store/apps/details?id=com.ejemplo.app3</textarea>
+    </div>
+
+    <div class="actions">
+      <button type="button" class="btn-generate" onclick="generateCoupons()">Actualizar Cupones</button>
+      <button type="button" class="btn-print" id="btnPrint" onclick="window.print()">Imprimir / Guardar en PDF</button>
+    </div>
+  </div>
+
+  <div class="print-area" id="printArea"></div>
+
+  <script>
+    // Almacén de coordenadas y tamaños compartidos por todos los cupones
+    const layoutState = {
+      tag: { left: 24, top: 16, width: 160, height: 26 },
+      title: { left: 24, top: 46, width: 440, height: 38 },
+      desc: { left: 24, top: 90, width: 440, height: 50 },
+      footer: { left: 24, top: 236, width: 440, height: 24 },
+      qr: { left: 520, top: 30, width: 140, height: 140 },
+      qrLabel: { left: 520, top: 178, width: 140, height: 24 }
+    };
+
+    let uploadedImages = []; // Array de { id, src, left, top, width, height }
+    let nextImgId = 1;
+
+    function handleMultipleImages(e) {
+      const files = Array.from(e.target.files || []);
+      if (files.length === 0) return;
+
+      files.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+          const imgObj = {
+            id: 'custom_img_' + (nextImgId++),
+            src: evt.target.result,
+            left: 24 + (uploadedImages.length * 20),
+            top: 150,
+            width: 70,
+            height: 70
+          };
+          uploadedImages.push(imgObj);
+          renderImagesBar();
+          syncAllCoupons();
+        };
+        reader.readAsDataURL(file);
+      });
+      e.target.value = '';
+    }
+
+    function removeImage(id) {
+      uploadedImages = uploadedImages.filter(img => img.id !== id);
+      renderImagesBar();
+      syncAllCoupons();
+    }
+
+    function renderImagesBar() {
+      const bar = document.getElementById('imagesBar');
+      if (!bar) return;
+      bar.innerHTML = uploadedImages.map(img => `
+        <div class="image-thumb">
+          <img src="${img.src}" alt="Thumb" />
+          <button type="button" class="btn-del" onclick="removeImage('${img.id}')" title="Eliminar">×</button>
+        </div>
+      `).join('');
+    }
+
+    function updateTextValues() {
+      const tagVal = document.getElementById('couponTag').value;
+      const titleVal = document.getElementById('couponTitle').value;
+      const descVal = document.getElementById('couponDesc').value;
+      const footerVal = document.getElementById('couponFooter').value;
+      const qrLabelVal = document.getElementById('qrLabelText').value;
+
+      document.querySelectorAll('.coupon').forEach(coupon => {
+        const tagEl = coupon.querySelector('[data-key="tag"] .item-tag');
+        if (tagEl) tagEl.textContent = tagVal;
+
+        const titleEl = coupon.querySelector('[data-key="title"] .item-title');
+        if (titleEl) titleEl.textContent = titleVal;
+
+        const descEl = coupon.querySelector('[data-key="desc"] .item-desc');
+        if (descEl) descEl.textContent = descVal;
+
+        const footerEl = coupon.querySelector('[data-key="footer"] .item-footer');
+        if (footerEl) footerEl.textContent = footerVal;
+
+        const qrLabelEl = coupon.querySelector('[data-key="qrLabel"] .item-qr-label');
+        if (qrLabelEl) qrLabelEl.textContent = qrLabelVal;
+      });
+    }
+
+    function generateCoupons() {
+      const rawLinks = document.getElementById('linksInput').value;
+      const links = rawLinks.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+      const printArea = document.getElementById('printArea');
+      if (!printArea) return;
+      printArea.innerHTML = '';
+
+      if (links.length === 0) {
+        return;
+      }
+
+      let currentSheet = null;
+
+      links.forEach((link, index) => {
+        if (index % 3 === 0) {
+          currentSheet = document.createElement('div');
+          currentSheet.className = 'sheet';
+          printArea.appendChild(currentSheet);
+        }
+
+        const isMaster = (index === 0);
+        const coupon = document.createElement('div');
+        coupon.className = `coupon ${isMaster ? 'master-coupon' : ''}`;
+        coupon.dataset.index = index;
+        coupon.dataset.link = link;
+
+        renderCouponContent(coupon, link, isMaster);
+        currentSheet.appendChild(coupon);
+      });
+
+      const btnPrint = document.getElementById('btnPrint');
+      if (btnPrint) btnPrint.style.display = 'inline-block';
+    }
+
+    function renderCouponContent(couponEl, link, isMaster) {
+      const tagText = document.getElementById('couponTag').value;
+      const titleText = document.getElementById('couponTitle').value;
+      const descText = document.getElementById('couponDesc').value;
+      const footerText = document.getElementById('couponFooter').value;
+      const qrLabelText = document.getElementById('qrLabelText').value;
+
+      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(link)}`;
+
+      couponEl.innerHTML = `
+        <!-- Tag -->
+        <div class="draggable-item" data-key="tag" style="left:${layoutState.tag.left}px; top:${layoutState.tag.top}px; width:${layoutState.tag.width}px; height:${layoutState.tag.height}px;">
+          <div class="item-text"><span class="item-tag">${escapeHtml(tagText)}</span></div>
+          ${isMaster ? '<div class="resize-handle"></div>' : ''}
+        </div>
+
+        <!-- Titulo -->
+        <div class="draggable-item" data-key="title" style="left:${layoutState.title.left}px; top:${layoutState.title.top}px; width:${layoutState.title.width}px; height:${layoutState.title.height}px;">
+          <div class="item-text item-title">${escapeHtml(titleText)}</div>
+          ${isMaster ? '<div class="resize-handle"></div>' : ''}
+        </div>
+
+        <!-- Descripcion -->
+        <div class="draggable-item" data-key="desc" style="left:${layoutState.desc.left}px; top:${layoutState.desc.top}px; width:${layoutState.desc.width}px; height:${layoutState.desc.height}px;">
+          <div class="item-text item-desc">${escapeHtml(descText)}</div>
+          ${isMaster ? '<div class="resize-handle"></div>' : ''}
+        </div>
+
+        <!-- Footer -->
+        <div class="draggable-item" data-key="footer" style="left:${layoutState.footer.left}px; top:${layoutState.footer.top}px; width:${layoutState.footer.width}px; height:${layoutState.footer.height}px;">
+          <div class="item-text item-footer">${escapeHtml(footerText)}</div>
+          ${isMaster ? '<div class="resize-handle"></div>' : ''}
+        </div>
+
+        <!-- Imagenes Personalizadas -->
+        ${uploadedImages.map(img => `
+          <div class="draggable-item" data-imgid="${img.id}" style="left:${img.left}px; top:${img.top}px; width:${img.width}px; height:${img.height}px;">
+            <img src="${img.src}" alt="Imagen cupón" />
+            ${isMaster ? '<div class="resize-handle"></div>' : ''}
+          </div>
+        `).join('')}
+
+        <!-- QR -->
+        <div class="draggable-item" data-key="qr" style="left:${layoutState.qr.left}px; top:${layoutState.qr.top}px; width:${layoutState.qr.width}px; height:${layoutState.qr.height}px;">
+          <img src="${qrUrl}" alt="QR" />
+          ${isMaster ? '<div class="resize-handle"></div>' : ''}
+        </div>
+
+        <!-- Texto QR -->
+        <div class="draggable-item" data-key="qrLabel" style="left:${layoutState.qrLabel.left}px; top:${layoutState.qrLabel.top}px; width:${layoutState.qrLabel.width}px; height:${layoutState.qrLabel.height}px;">
+          <div class="item-text item-qr-label">${escapeHtml(qrLabelText)}</div>
+          ${isMaster ? '<div class="resize-handle"></div>' : ''}
+        </div>
+      `;
+
+      if (isMaster) {
+        initInteractions(couponEl);
+      }
+    }
+
+    // Replica los cambios del cupón maestro en el resto de los cupones
+    function syncAllCoupons() {
+      const allCoupons = document.querySelectorAll('.coupon');
+      allCoupons.forEach((c) => {
+        const isMaster = c.classList.contains('master-coupon');
+        renderCouponContent(c, c.dataset.link, isMaster);
+      });
+    }
+
+    // Control de Arrastrar y Redimensionar con mouse y pantallas táctiles
+    function initInteractions(masterCoupon) {
+      let activeEl = null;
+      let isResizing = false;
+      let startX = 0, startY = 0, startLeft = 0, startTop = 0, startWidth = 0, startHeight = 0;
+
+      function onStart(e) {
+        const item = e.target.closest('.draggable-item');
+        if (!item || !masterCoupon.contains(item)) return;
+
+        activeEl = item;
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+        startX = clientX;
+        startY = clientY;
+        startLeft = parseFloat(item.style.left) || 0;
+        startTop = parseFloat(item.style.top) || 0;
+        startWidth = parseFloat(item.style.width) || item.offsetWidth;
+        startHeight = parseFloat(item.style.height) || item.offsetHeight;
+
+        isResizing = e.target.classList.contains('resize-handle');
+
+        document.addEventListener('mousemove', onMove, { passive: false });
+        document.addEventListener('mouseup', onEnd);
+        document.addEventListener('touchmove', onMove, { passive: false });
+        document.addEventListener('touchend', onEnd);
+
+        if (e.cancelable && !isResizing) {
+          e.preventDefault();
+        }
+      }
+
+      function onMove(e) {
+        if (!activeEl) return;
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+        const dx = clientX - startX;
+        const dy = clientY - startY;
+
+        if (isResizing) {
+          const newW = Math.max(30, Math.round(startWidth + dx));
+          const newH = Math.max(20, Math.round(startHeight + dy));
+          activeEl.style.width = newW + 'px';
+          activeEl.style.height = newH + 'px';
+          savePosition(activeEl, null, null, newW, newH);
+        } else {
+          const newL = Math.round(startLeft + dx);
+          const newT = Math.round(startTop + dy);
+          activeEl.style.left = newL + 'px';
+          activeEl.style.top = newT + 'px';
+          savePosition(activeEl, newL, newT, null, null);
+        }
+
+        syncClonesLive(activeEl);
+        if (e.cancelable) e.preventDefault();
+      }
+
+      function onEnd() {
+        activeEl = null;
+        isResizing = false;
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onEnd);
+        document.removeEventListener('touchmove', onMove);
+        document.removeEventListener('touchend', onEnd);
+      }
+
+      masterCoupon.querySelectorAll('.draggable-item').forEach(item => {
+        item.removeEventListener('mousedown', onStart);
+        item.addEventListener('mousedown', onStart);
+        item.removeEventListener('touchstart', onStart);
+        item.addEventListener('touchstart', onStart, { passive: false });
+      });
+    }
+
+    function savePosition(el, l, t, w, h) {
+      const key = el.dataset.key;
+      const imgId = el.dataset.imgid;
+
+      if (key && layoutState[key]) {
+        if (l !== null) layoutState[key].left = Math.round(l);
+        if (t !== null) layoutState[key].top = Math.round(t);
+        if (w !== null) layoutState[key].width = Math.round(w);
+        if (h !== null) layoutState[key].height = Math.round(h);
+      } else if (imgId) {
+        const found = uploadedImages.find(img => img.id === imgId);
+        if (found) {
+          if (l !== null) found.left = Math.round(l);
+          if (t !== null) found.top = Math.round(t);
+          if (w !== null) found.width = Math.round(w);
+          if (h !== null) found.height = Math.round(h);
+        }
+      }
+    }
+
+    function syncClonesLive(masterItem) {
+      const key = masterItem.dataset.key;
+      const imgId = masterItem.dataset.imgid;
+      const selector = key ? `[data-key="${key}"]` : `[data-imgid="${imgId}"]`;
+
+      document.querySelectorAll('.coupon:not(.master-coupon)').forEach(coupon => {
+        const clone = coupon.querySelector(selector);
+        if (clone) {
+          clone.style.left = masterItem.style.left;
+          clone.style.top = masterItem.style.top;
+          clone.style.width = masterItem.style.width;
+          clone.style.height = masterItem.style.height;
+        }
+      });
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    }
+
+    // Carga inicial garantizada al abrir el sitio
+    document.addEventListener('DOMContentLoaded', () => {
+      generateCoupons();
+    });
+  </script>
+</body>
+</html>
