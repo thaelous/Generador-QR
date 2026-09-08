@@ -1,6 +1,0 @@
-{
-  "name": "Editor y Generador de Cupones con QR",
-  "description": "Editor y generador visual de cuponeras con código QR y elementos interactivos arrastrables y redimensionables para impresión en hojas tamaño carta.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}
